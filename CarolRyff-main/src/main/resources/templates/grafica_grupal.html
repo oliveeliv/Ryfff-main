@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Comparativa Grupal · Escala Ryff</title>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&family=Cormorant+Garamond&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root { --navy: #1a2744; --wine: #6b1f2a; --gold: #c9a84c; --cream: #f5f0e8; }
+        body { font-family: 'EB Garamond', serif; background: var(--cream); padding: 2rem; }
+        .main-wrapper { max-width: 900px; margin: 0 auto; }
+        .filter-card { background: white; padding: 1.2rem 1.8rem; border: 1px solid var(--gold); margin-bottom: 1.5rem; }
+        .filter-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.3rem; }
+        .filter-group label { font-size: 0.85rem; text-transform: uppercase; color: #5a5550; font-weight: 600; }
+        .filter-group select { padding: 0.5rem 1rem; font-family: 'EB Garamond', serif; font-size: 1rem; border: 1px solid #d8d0c0; background: #faf8f4; }
+        .chart-card { background: white; padding: 2rem; border: 1px solid var(--gold); }
+        .chart-container { position: relative; height: 500px; }
+        .btn-navy { background: var(--navy); color: white; padding: .8rem 1.8rem; text-decoration: none; cursor: pointer; border: none; font-size: 1rem; display: inline-block; }
+        .btn-navy:hover { background: #243358; }
+    </style>
+</head>
+<body>
+<div class="main-wrapper">
+    <h1 style="border-bottom: 2px solid var(--gold); margin-bottom: 1.5rem;">Comparativa por <em>Grupo y Filtros</em></h1>
+
+    <!-- FORMULARIO DE FILTROS PARA LAS GRÁFICAS -->
+    <div class="filter-card">
+        <form method="GET" th:action="@{/resultados/comparativa-grupal}" class="filter-form">
+            <div class="filter-group">
+                <label for="anio">Año Escolar</label>
+                <select id="anio" name="anio">
+                    <option value="">— Todos —</option>
+                    <option th:each="a : ${anios}" th:value="${a}" th:text="${a}" th:selected="${a == filtroAnio}"></option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="grupo">Grupo</label>
+                <select id="grupo" name="grupo">
+                    <option value="">— Todos —</option>
+                    <option th:each="g : ${grupos}" th:value="${g}" th:text="${g}" th:selected="${g == filtroGrupo}"></option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="modalidad">Modalidad</label>
+                <select id="modalidad" name="modalidad">
+                    <option value="">— Todas —</option>
+                    <option th:each="m : ${modalidades}" th:value="${m}" th:text="${m}" th:selected="${m == filtroModalidad}"></option>
+                </select>
+            </div>
+            <button type="submit" class="btn-navy" style="padding: 0.5rem 1.5rem;">Filtrar Gráfica</button>
+        </form>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-container"><canvas id="radarGrupal"></canvas></div>
+    </div>
+    <div style="margin-top: 2rem;">
+        <a th:href="@{/resultados}" class="btn-navy">← Volver</a>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const DATOS_GRUPOS = [[${promediosGrupos}]];
+</script>
+
+<script>
+    function initRadarGrupal() {
+        const ctx = document.getElementById('radarGrupal').getContext('2d');
+        const labels = ['Autoaceptación', 'Relaciones', 'Autonomía', 'Entorno', 'Propósito', 'Crecimiento'];
+        const paleta = [
+            { bg: 'rgba(107,31,42,0.1)', border: '#6b1f2a' },
+            { bg: 'rgba(26,39,68,0.1)', border: '#1a2744' },
+            { bg: 'rgba(90,103,65,0.1)', border: '#5a6741' },
+            { bg: 'rgba(201,168,76,0.1)', border: '#c9a84c' }
+        ];
+
+        const datasets = DATOS_GRUPOS.map((grupo, i) => ({
+            label: 'Grupo ' + grupo[0],
+            data: [grupo[1], grupo[2], grupo[3], grupo[4], grupo[5], grupo[6]],
+            backgroundColor: paleta[i % paleta.length].bg,
+            borderColor: paleta[i % paleta.length].border,
+            borderWidth: 2
+        }));
+
+        new Chart(ctx, {
+            type: 'radar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { r: { min: 0, max: 6 } }
+            }
+        });
+    }
+    window.onload = initRadarGrupal;
+</script>
+</body>
+</html>
