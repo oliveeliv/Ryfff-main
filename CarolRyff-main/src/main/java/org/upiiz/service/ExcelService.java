@@ -32,51 +32,54 @@ public class ExcelService {
     private static final byte[] COLOR_CREAM_DARK = {(byte)236, (byte)230, (byte)216};
     private static final byte[] COLOR_WINE       = {(byte)107, (byte)31,  (byte)42};
 
+    // Ítems redactados en sentido negativo (se invierten: 7 - valor en escala 1-6).
+    // Misma numeración que el cuestionario: 17 inversos y 22 directos.
     private static final Set<Integer> INVERSAS = Set.of(
-            2, 4, 5, 9, 13, 15, 20, 22, 25, 26, 27, 29, 30, 33, 34, 36
+            2, 4, 5, 7, 8, 12, 14, 19, 21, 24, 25, 26, 28, 29, 32, 33, 35
     );
 
+    // Mismo texto y misma numeración que el cuestionario.
     private static final Map<Integer, String> PREGUNTAS = new LinkedHashMap<>();
     static {
         PREGUNTAS.put(1,  "Cuando repaso la historia de mi vida, estoy contento de cómo han resultado las cosas.");
         PREGUNTAS.put(2,  "A menudo me siento solo porque tengo pocos amigos íntimos con quien compartir mis preocupaciones.");
-        PREGUNTAS.put(3,  "No tengo miedo de expresar mis opiniones, incluso cuando son opuestas a las de la mayoría.");
+        PREGUNTAS.put(3,  "No tengo miedo de expresar mis opiniones, incluso cuando son opuestas a las opiniones de la mayoría de la gente.");
         PREGUNTAS.put(4,  "Me preocupa cómo otra gente evalúa las elecciones que he hecho en mi vida.");
         PREGUNTAS.put(5,  "Me resulta difícil dirigir mi vida hacia un camino que me satisfaga.");
-        PREGUNTAS.put(6,  "Disfruto haciendo planes para el futuro y trabajar para hacerlos realidad.");
-        PREGUNTAS.put(7,  "En general, me siento seguro y positivo conmigo mismo.");
-        PREGUNTAS.put(8,  "No tengo muchas personas que quieran escucharme cuando necesito hablar.");
-        PREGUNTAS.put(9,  "Tiendo a preocuparme sobre lo que otra gente piensa de mí.");
-        PREGUNTAS.put(10, "Me juzgo por lo que yo creo que es importante, no por los valores que otros piensan.");
-        PREGUNTAS.put(11, "He sido capaz de construir un hogar y un modo de vida a mi gusto.");
-        PREGUNTAS.put(12, "Soy una persona activa al realizar los proyectos que propuse para mí mismo.");
-        PREGUNTAS.put(13, "Si tuviera la oportunidad, hay muchas cosas de mí mismo que cambiaría.");
-        PREGUNTAS.put(14, "Siento que mis amistades me aportan muchas cosas.");
-        PREGUNTAS.put(15, "Tiendo a estar influenciado por la gente con fuertes convicciones.");
-        PREGUNTAS.put(16, "En general, siento que soy responsable de la situación en la que vivo.");
-        PREGUNTAS.put(17, "Me siento bien cuando pienso en lo que he hecho en el pasado y lo que espero hacer en el futuro.");
-        PREGUNTAS.put(18, "Mis objetivos en la vida han sido más una fuente de satisfacción que de frustración.");
-        PREGUNTAS.put(19, "Me gusta la mayor parte de los aspectos de mi personalidad.");
-        PREGUNTAS.put(20, "Me parece que la mayor parte de las personas tienen más amigos que yo.");
-        PREGUNTAS.put(21, "Tengo confianza en mis opiniones incluso si son contrarias al consenso general.");
-        PREGUNTAS.put(22, "Las demandas de la vida diaria a menudo me deprimen.");
-        PREGUNTAS.put(23, "Tengo clara la dirección y el objetivo de mi vida.");
-        PREGUNTAS.put(24, "En general, con el tiempo siento que sigo aprendiendo más sobre mí mismo.");
-        PREGUNTAS.put(25, "En muchos aspectos, me siento decepcionado de mis logros en la vida.");
-        PREGUNTAS.put(26, "No he experimentado muchas relaciones cercanas y de confianza.");
-        PREGUNTAS.put(27, "Es difícil para mí expresar mis propias opiniones en asuntos polémicos.");
-        PREGUNTAS.put(28, "Soy bastante bueno manejando muchas de mis responsabilidades en la vida diaria.");
-        PREGUNTAS.put(29, "No tengo claro qué es lo que intento conseguir en la vida.");
-        PREGUNTAS.put(30, "Hace mucho tiempo que dejé de intentar hacer grandes mejoras en mi vida.");
-        PREGUNTAS.put(31, "En su mayor parte, me siento orgulloso de quien soy y la vida que llevo.");
-        PREGUNTAS.put(32, "Sé que puedo confiar en mis amigos, y ellos saben que pueden confiar en mí.");
-        PREGUNTAS.put(33, "A menudo cambio mis decisiones si mis amigos o familia están en desacuerdo.");
-        PREGUNTAS.put(34, "No quiero intentar nuevas formas de hacer las cosas; mi vida está bien como está.");
-        PREGUNTAS.put(35, "Pienso que es importante tener nuevas experiencias que desafíen lo que uno piensa.");
-        PREGUNTAS.put(36, "Cuando pienso en ello, realmente con los años no he mejorado mucho como persona.");
-        PREGUNTAS.put(37, "Tengo la sensación de que con el tiempo me he desarrollado mucho como persona.");
-        PREGUNTAS.put(38, "Para mí, la vida ha sido un proceso continuo de estudio, cambio y crecimiento.");
-        PREGUNTAS.put(39, "Si me sintiera infeliz con mi situación de vida daría los pasos más eficaces para cambiarla.");
+        PREGUNTAS.put(6,  "En general, me siento seguro y positivo conmigo mismo.");
+        PREGUNTAS.put(7,  "No tengo muchas personas que quieran escucharme cuando necesito hablar.");
+        PREGUNTAS.put(8,  "Tiendo a preocuparme sobre lo que otra gente piensa de mí.");
+        PREGUNTAS.put(9,  "Me juzgo por lo que yo creo que es importante, no por los valores que otros piensan que son importantes.");
+        PREGUNTAS.put(10, "He sido capaz de construir un hogar y un modo de vida a mi gusto.");
+        PREGUNTAS.put(11, "Soy una persona activa al realizar los proyectos que propuse para mí mismo.");
+        PREGUNTAS.put(12, "Si tuviera la oportunidad, hay muchas cosas de mí mismo que cambiaría.");
+        PREGUNTAS.put(13, "Siento que mis amistades me aportan muchas cosas.");
+        PREGUNTAS.put(14, "Tiendo a estar influenciado por la gente con fuertes convicciones.");
+        PREGUNTAS.put(15, "En general, siento que soy responsable de la situación en la que vivo.");
+        PREGUNTAS.put(16, "Me siento bien cuando pienso en lo que he hecho en el pasado y lo que espero hacer en el futuro.");
+        PREGUNTAS.put(17, "Mis objetivos en la vida han sido más una fuente de satisfacción que de frustración para mí.");
+        PREGUNTAS.put(18, "Me gusta la mayor parte de los aspectos de mi personalidad.");
+        PREGUNTAS.put(19, "Me parece que la mayor parte de las personas tienen más amigos que yo.");
+        PREGUNTAS.put(20, "Tengo confianza en mis opiniones incluso si son contrarias al consenso general.");
+        PREGUNTAS.put(21, "Las demandas de la vida diaria a menudo me deprimen.");
+        PREGUNTAS.put(22, "Tengo clara la dirección y el objetivo de mi vida.");
+        PREGUNTAS.put(23, "En general, con el tiempo siento que sigo aprendiendo más sobre mí mismo.");
+        PREGUNTAS.put(24, "En muchos aspectos, me siento decepcionado de mis logros en la vida.");
+        PREGUNTAS.put(25, "No he experimentado muchas relaciones cercanas y de confianza.");
+        PREGUNTAS.put(26, "Es difícil para mí expresar mis propias opiniones en asuntos polémicos.");
+        PREGUNTAS.put(27, "Soy bastante bueno manejando muchas de mis responsabilidades en la vida diaria.");
+        PREGUNTAS.put(28, "No tengo claro qué es lo que intento conseguir en la vida.");
+        PREGUNTAS.put(29, "Hace mucho tiempo que dejé de intentar hacer grandes mejoras o cambios en mi vida.");
+        PREGUNTAS.put(30, "En su mayor parte, me siento orgulloso de quien soy y la vida que llevo.");
+        PREGUNTAS.put(31, "Sé que puedo confiar en mis amigos, y ellos saben que pueden confiar en mí.");
+        PREGUNTAS.put(32, "A menudo cambio mis decisiones si mis amigos o mi familia están en desacuerdo.");
+        PREGUNTAS.put(33, "No quiero intentar nuevas formas de hacer las cosas; mi vida está bien como está.");
+        PREGUNTAS.put(34, "Pienso que es importante tener nuevas experiencias que desafíen lo que uno piensa sobre sí mismo y sobre el mundo.");
+        PREGUNTAS.put(35, "Cuando pienso en ello, realmente con los años no he mejorado mucho como persona.");
+        PREGUNTAS.put(36, "Tengo la sensación de que con el tiempo me he desarrollado mucho como persona.");
+        PREGUNTAS.put(37, "Para mí, la vida ha sido un proceso continuo de estudio, cambio y crecimiento.");
+        PREGUNTAS.put(38, "Si me sintiera infeliz con mi situación de vida daría los pasos más eficaces para cambiarla.");
+        PREGUNTAS.put(39, "Disfruto haciendo planes para el futuro y trabajar para hacerlos realidad.");
     }
 
     @Transactional(readOnly = true)
