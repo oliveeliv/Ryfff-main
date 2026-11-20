@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/resultados")
@@ -25,7 +24,6 @@ public class ResultadosController {
     private final ExcelService excelService;
 
     // 1. LISTA GENERAL (Con filtro por Grupo, Año y Modalidad)
-    // 1. LISTA GENERAL
     @GetMapping
     public String listarResultados(
             @RequestParam(required = false) String grupo,
@@ -42,21 +40,21 @@ public class ResultadosController {
             model.addAttribute("resultados", resultados != null ? resultados : new ArrayList<>());
             model.addAttribute("grupos", participanteService.obtenerGrupos());
             model.addAttribute("anios", participanteService.obtenerAnios());
-            model.addAttribute("modalidades", List.of("Escolarizado", "Semiescolarizado"));
+            // Valores reales guardados en la BD (así siempre coinciden con el filtro)
+            model.addAttribute("modalidades", participanteService.obtenerModalidades());
         } catch (Exception e) {
             System.err.println("❌ ERROR AL CARGAR LISTA DE RESULTADOS:");
             e.printStackTrace(); // Revisa la ventana Run/Console de IntelliJ para ver la traza exacta
             model.addAttribute("resultados", new ArrayList<>());
             model.addAttribute("grupos", List.of());
             model.addAttribute("anios", List.of());
-            model.addAttribute("modalidades", List.of("Escolarizado", "Semiescolarizado"));
+            model.addAttribute("modalidades", List.of());
             model.addAttribute("error", "Error: " + e.getMessage());
         }
         model.addAttribute("filtroAnio", anio != null ? anio : "");
         model.addAttribute("filtroGrupo", grupo != null ? grupo : "");
         model.addAttribute("filtroModalidad", modalidad != null ? modalidad : "");
         return "lista";
-
     }
 
     // 2. EXPORTAR A EXCEL (Con filtro por Grupo, Año y Modalidad)
@@ -93,6 +91,7 @@ public class ResultadosController {
     }
 
     // 3. GRÁFICA GRUPAL (Filtros por Año, Grupo y Modalidad)
+    // Cada fila de promediosGrupos: [grupo, n, autoaceptacion, relaciones, autonomia, entorno, proposito, crecimiento]
     @GetMapping("/comparativa-grupal")
     public String mostrarGraficaGrupal(
             @RequestParam(required = false) String grupo,
@@ -100,33 +99,17 @@ public class ResultadosController {
             @RequestParam(required = false) String modalidad,
             Model model) {
         try {
-            List<Participante> todos = participanteService.filtrarPorGrupoAnioYModalidad(grupo, anio, modalidad);
-            if (todos == null) todos = new ArrayList<>();
-
-            Map<String, List<Participante>> gruposMap = todos.stream()
-                    .filter(p -> p != null && p.getGrupo() != null)
-                    .collect(Collectors.groupingBy(Participante::getGrupo));
-
-            List<Object[]> promediosGrupos = new ArrayList<>();
-            gruposMap.forEach((nombreGrupo, participantes) -> {
-                promediosGrupos.add(new Object[]{
-                        nombreGrupo,
-                        avg(participantes, "autoaceptacion"),
-                        avg(participantes, "relacionesPositivas"),
-                        avg(participantes, "autonomia"),
-                        avg(participantes, "dominioEntorno"),
-                        avg(participantes, "propositoVida"),
-                        avg(participantes, "crecimientoPersonal")
-                });
-            });
-
-            model.addAttribute("promediosGrupos", promediosGrupos);
+            model.addAttribute("promediosGrupos",
+                    participanteService.obtenerPromediosGrupalesFiltrados(grupo, anio, modalidad));
             model.addAttribute("grupos", participanteService.obtenerGrupos());
             model.addAttribute("anios", participanteService.obtenerAnios());
-            model.addAttribute("modalidades", List.of("Escolarizado", "Semiescolarizado"));
+            model.addAttribute("modalidades", participanteService.obtenerModalidades());
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("promediosGrupos", new ArrayList<>());
+            model.addAttribute("grupos", List.of());
+            model.addAttribute("anios", List.of());
+            model.addAttribute("modalidades", List.of());
             model.addAttribute("error", "Error al cargar gráfica: " + e.getMessage());
         }
 
@@ -150,11 +133,11 @@ public class ResultadosController {
 
             Map<String, Double> promedios = new HashMap<>();
             promedios.put("autoaceptacion",      avg(participantes, "autoaceptacion"));
-            promedios.put("relacionesPositivas",  avg(participantes, "relacionesPositivas"));
-            promedios.put("autonomia",            avg(participantes, "autonomia"));
-            promedios.put("dominioEntorno",       avg(participantes, "dominioEntorno"));
-            promedios.put("propositoVida",        avg(participantes, "propositoVida"));
-            promedios.put("crecimientoPersonal",  avg(participantes, "crecimientoPersonal"));
+            promedios.put("relacionesPositivas", avg(participantes, "relacionesPositivas"));
+            promedios.put("autonomia",           avg(participantes, "autonomia"));
+            promedios.put("dominioEntorno",      avg(participantes, "dominioEntorno"));
+            promedios.put("propositoVida",       avg(participantes, "propositoVida"));
+            promedios.put("crecimientoPersonal", avg(participantes, "crecimientoPersonal"));
             return promedios;
         } catch (Exception e) {
             e.printStackTrace();

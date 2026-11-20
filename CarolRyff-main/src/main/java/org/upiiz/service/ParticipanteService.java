@@ -39,7 +39,7 @@ public class ParticipanteService {
                 .map(bienestarService::toResultado);
     }
 
-    // NUEVO: Filtrar resultados adaptado para Grupo, Año y Modalidad
+    // Filtrar resultados adaptado para Grupo, Año y Modalidad
     public List<Resultado> filtrarResultados(String grupo, String anio, String modalidad) {
         return filtrarPorGrupoAnioYModalidad(grupo, anio, modalidad)
                 .stream()
@@ -47,13 +47,16 @@ public class ParticipanteService {
                 .toList();
     }
 
-    // NUEVO: Método unificado para filtrar por Grupo, Año y Modalidad
+    // Método unificado para filtrar por Grupo, Año y Modalidad
     public List<Participante> filtrarPorGrupoAnioYModalidad(String grupo, String anio, String modalidad) {
-        String g = (grupo != null && !grupo.isBlank()) ? grupo : null;
-        String a = (anio != null && !anio.isBlank()) ? anio : null;
-        String m = (modalidad != null && !modalidad.isBlank()) ? modalidad : null;
+        return participanteRepository.filtrarPorGrupoAnioYModalidad(
+                vacioANulo(grupo), vacioANulo(anio), vacioANulo(modalidad));
+    }
 
-        return participanteRepository.filtrarPorGrupoAnioYModalidad(g, a, m);
+    // NUEVO: promedios por grupo con filtros y número de participantes (para la gráfica)
+    public List<Object[]> obtenerPromediosGrupalesFiltrados(String grupo, String anio, String modalidad) {
+        return participanteRepository.findPromediosPorGrupoFiltrado(
+                vacioANulo(grupo), vacioANulo(anio), vacioANulo(modalidad));
     }
 
     @Transactional
@@ -80,5 +83,9 @@ public class ParticipanteService {
 
     public List<Respuesta> obtenerRespuestasPorParticipante(Long id) {
         return respuestaRepository.findByParticipanteIdOrderByNumeroPreguntaAsc(id);
+    }
+
+    private String vacioANulo(String s) {
+        return (s != null && !s.isBlank()) ? s : null;
     }
 }

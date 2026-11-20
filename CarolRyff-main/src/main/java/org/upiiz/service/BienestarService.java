@@ -19,6 +19,10 @@ public class BienestarService {
     private final ParticipanteRepository participanteRepository;
     private final RespuestaRepository respuestaRepository;
 
+    private static final int TOTAL_PREGUNTAS = 39;
+    private static final int ESCALA_MIN = 1;
+    private static final int ESCALA_MAX = 6;
+
     public static final Map<Integer, String> PREGUNTAS = new LinkedHashMap<>();
 
     static {
@@ -63,22 +67,28 @@ public class BienestarService {
         PREGUNTAS.put(39, "Disfruto haciendo planes para el futuro y trabajar para hacerlos realidad.");
     }
 
+    // Ítems redactados en sentido negativo (se invierten: 7 - valor en escala 1-6).
     private static final Set<Integer> PREGUNTAS_INVERSAS = Set.of(
-            2, 4, 5, 8, 9, 13, 15, 20, 22, 25, 26, 27, 29, 30, 33, 34, 36
+            2, 4, 5, 7, 8, 12, 14, 19, 21, 24, 25, 26, 28, 29, 32, 33, 35
     );
 
     private static final Map<String, List<Integer>> DIMENSIONES = new LinkedHashMap<>();
     static {
-        DIMENSIONES.put("AUTOACEPTACION",       List.of(1, 7, 13, 19, 25, 31));
-        DIMENSIONES.put("RELACIONES_POSITIVAS", List.of(2, 8, 14, 20, 26, 32));
-        DIMENSIONES.put("AUTONOMIA",            List.of(3, 4, 9, 10, 15, 21, 27, 33));
-        DIMENSIONES.put("DOMINIO_ENTORNO",      List.of(5, 11, 16, 22, 28, 39));
-        DIMENSIONES.put("PROPOSITO_VIDA",       List.of(6, 12, 17, 18, 23, 29));
-        DIMENSIONES.put("CRECIMIENTO_PERSONAL", List.of(24, 30, 34, 35, 36, 37, 38));
+        DIMENSIONES.put("AUTOACEPTACION",       List.of(1, 6, 12, 18, 24, 30));
+        DIMENSIONES.put("RELACIONES_POSITIVAS", List.of(2, 7, 13, 19, 25, 31));
+        DIMENSIONES.put("AUTONOMIA",            List.of(3, 4, 8, 9, 14, 20, 26, 32));
+        DIMENSIONES.put("DOMINIO_ENTORNO",      List.of(5, 10, 15, 21, 27, 38));
+        DIMENSIONES.put("PROPOSITO_VIDA",       List.of(11, 16, 17, 22, 28, 39));
+        DIMENSIONES.put("CRECIMIENTO_PERSONAL", List.of(23, 29, 33, 34, 35, 36, 37));
     }
 
+    // ------------------------------------------------------------------
+    // Guardar evaluación nueva
+    // ------------------------------------------------------------------
     @Transactional
     public Participante guardarEvaluacion(Evaluacion form) {
+
+        validarRespuestas(form.getRespuestas());
 
         // Verificar duplicado en los últimos 5 minutos
         LocalDateTime hace5min = LocalDateTime.now().minusMinutes(5);
@@ -101,12 +111,75 @@ public class BienestarService {
                 .nombreCompleto(form.getNombreCompleto().trim())
                 .sexo(form.getSexo())
                 .edad(form.getEdad())
-                .modalidad(form.getModalidad()) // <-- NUEVO: Mapeo de la modalidad
+                .modalidad(form.getModalidad())
                 .anioEscolar(form.getAnioEscolar())
                 .grupo(form.getGrupo().trim().toUpperCase())
                 .build();
 
-        Map<String, Double> proms = calcularPromedios(form.getRespuestas());
+        aplicarPromedios(p, form.getRespuestas());
+
+        Participante guardado = participanteRepository.save(p);
+        guardarRespuestas(guardado, form.getRespuestas());
+
+        return guardado;
+    }
+
+    // ------------------------------------------------------------------
+    // Recalcular registros que ya existían (datos viejos mal calculados)
+    // ------------------------------------------------------------------
+    @Transactional
+    public int recalcularTodos() {
+        List<Participante> participantes = participanteRepository.findAll();
+        int recalculados = 0;
+
+        for (Participante p : participantes) {
+            List<Respuesta> actuales = respuestaRepository.findByParticipanteIdOrderByNumeroPreguntaAsc(p.getId());
+            if (actuales.isEmpty()) {
+                continue; // sin respuestas originales no se puede recalcular
+            }
+
+            Map<Integer, Integer> originales = new HashMap<>();
+            for (Respuesta r : actuales) {
+                originales.put(r.getNumeroPregunta(), r.getValorOriginal());
+            }
+
+            // Reemplazar respuestas con valorProcesado y dimensión correctos
+            respuestaRepository.deleteAll(actuales);
+            respuestaRepository.flush();
+            guardarRespuestas(p, originales);
+
+            // Reemplazar promedios del participante
+            aplicarPromedios(p, originales);
+            participanteRepository.save(p);
+
+            recalculados++;
+        }
+        return recalculados;
+    }
+
+    // ------------------------------------------------------------------
+    // Cálculos
+    // ------------------------------------------------------------------
+    public Map<String, Double> calcularPromedios(Map<Integer, Integer> respuestas) {
+        Map<String, Double> promedios = new LinkedHashMap<>();
+        DIMENSIONES.forEach((nombre, ids) -> {
+            List<Double> valores = new ArrayList<>();
+            for (Integer id : ids) {
+                Integer v = respuestas.get(id);
+                if (v != null) {
+                    valores.add((double) procesar(id, v));
+                }
+            }
+            double avg = valores.isEmpty() ? 0.0
+                    : valores.stream().mapToDouble(d -> d).average().orElse(0.0);
+            promedios.put(nombre, redondear(avg));
+        });
+        return promedios;
+    }
+
+    /** Aplica los 6 promedios y el global al participante. */
+    private void aplicarPromedios(Participante p, Map<Integer, Integer> respuestas) {
+        Map<String, Double> proms = calcularPromedios(respuestas);
         p.setPromedioAutoaceptacion(proms.get("AUTOACEPTACION"));
         p.setPromedioRelacionesPositivas(proms.get("RELACIONES_POSITIVAS"));
         p.setPromedioAutonomia(proms.get("AUTONOMIA"));
@@ -118,42 +191,42 @@ public class BienestarService {
                 .mapToDouble(Double::doubleValue)
                 .average().orElse(0.0);
         p.setPromedioBienestarGlobal(redondear(global));
-
-        Participante guardado = participanteRepository.save(p);
-
-        form.getRespuestas().forEach((num, val) -> {
-            int valorProcesado = PREGUNTAS_INVERSAS.contains(num) ? (7 - val) : val; // <-- Corregido
-
-            respuestaRepository.save(Respuesta.builder()
-                    .participante(guardado)
-                    .numeroPregunta(num)
-                    .valorOriginal(val)
-                    .valorProcesado(valorProcesado)
-                    .dimension(getDimension(num))
-                    .build());
-        });
-
-        return guardado;
     }
 
-    public Map<String, Double> calcularPromedios(Map<Integer, Integer> respuestas) {
-        Map<String, Double> promedios = new LinkedHashMap<>();
-        DIMENSIONES.forEach((nom, ids) -> {
-            List<Double> valores = new ArrayList<>();
-            for (Integer id : ids) {
-                Integer v = respuestas.get(id);
-                if (v != null) {
-                    double procesado = PREGUNTAS_INVERSAS.contains(id)
-                            ? (7.0 - v) // <-- Corregido
-                            : (double) v;
-                    valores.add(procesado);
-                }
+    private void guardarRespuestas(Participante p, Map<Integer, Integer> respuestas) {
+        List<Respuesta> lista = new ArrayList<>();
+        respuestas.forEach((num, val) -> lista.add(Respuesta.builder()
+                .participante(p)
+                .numeroPregunta(num)
+                .valorOriginal(val)
+                .valorProcesado(procesar(num, val))
+                .dimension(getDimension(num))
+                .build()));
+        respuestaRepository.saveAll(lista);
+    }
+
+    /** Invierte el valor si el ítem es inverso (escala 1-6 → 7 - valor). */
+    private int procesar(int numeroPregunta, int valor) {
+        return PREGUNTAS_INVERSAS.contains(numeroPregunta)
+                ? (ESCALA_MIN + ESCALA_MAX) - valor
+                : valor;
+    }
+
+    private void validarRespuestas(Map<Integer, Integer> respuestas) {
+        if (respuestas == null || respuestas.size() != TOTAL_PREGUNTAS) {
+            throw new IllegalArgumentException(
+                    "Se requieren las " + TOTAL_PREGUNTAS + " respuestas.");
+        }
+        respuestas.forEach((num, val) -> {
+            if (num == null || num < 1 || num > TOTAL_PREGUNTAS) {
+                throw new IllegalArgumentException("Número de pregunta inválido: " + num);
             }
-            double avg = valores.isEmpty() ? 0.0
-                    : valores.stream().mapToDouble(d -> d).average().orElse(0.0);
-            promedios.put(nom, redondear(avg));
+            if (val == null || val < ESCALA_MIN || val > ESCALA_MAX) {
+                throw new IllegalArgumentException(
+                        "La respuesta a la pregunta " + num + " debe estar entre "
+                                + ESCALA_MIN + " y " + ESCALA_MAX + ".");
+            }
         });
-        return promedios;
     }
 
     public Resultado toResultado(Participante p) {
@@ -162,7 +235,7 @@ public class BienestarService {
                 .nombreCompleto(p.getNombreCompleto())
                 .sexo(p.getSexo())
                 .edad(p.getEdad())
-                .modalidad(p.getModalidad()) // <-- NUEVO: Mapeo de la modalidad
+                .modalidad(p.getModalidad())
                 .anioEscolar(p.getAnioEscolar())
                 .grupo(p.getGrupo())
                 .autoaceptacion(p.getPromedioAutoaceptacion())

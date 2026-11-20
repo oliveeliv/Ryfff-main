@@ -39,6 +39,7 @@ public interface ParticipanteRepository extends JpaRepository<Participante, Long
             @Param("anio") String anio,
             @Param("modalidad") String modalidad);
 
+    // Promedios por grupo SIN filtros (se conserva por compatibilidad)
     @Query("SELECT p.grupo, " +
             "AVG(p.promedioAutoaceptacion), " +
             "AVG(p.promedioRelacionesPositivas), " +
@@ -50,6 +51,26 @@ public interface ParticipanteRepository extends JpaRepository<Participante, Long
             "GROUP BY p.grupo " +
             "ORDER BY p.grupo ASC")
     List<Object[]> findPromediosPorGrupo();
+
+    // NUEVO: promedios por grupo CON filtros y con el número de participantes (n)
+    // Cada fila: [grupo, n, autoaceptacion, relaciones, autonomia, entorno, proposito, crecimiento]
+    @Query("SELECT p.grupo, COUNT(p), " +
+            "AVG(p.promedioAutoaceptacion), " +
+            "AVG(p.promedioRelacionesPositivas), " +
+            "AVG(p.promedioAutonomia), " +
+            "AVG(p.promedioDominioEntorno), " +
+            "AVG(p.promedioPropositoVida), " +
+            "AVG(p.promedioCrecimientoPersonal) " +
+            "FROM Participante p WHERE " +
+            "(:grupo IS NULL OR :grupo = '' OR p.grupo = :grupo) AND " +
+            "(:anio IS NULL OR :anio = '' OR p.anioEscolar = :anio) AND " +
+            "(:modalidad IS NULL OR :modalidad = '' OR p.modalidad = :modalidad) " +
+            "GROUP BY p.grupo " +
+            "ORDER BY p.grupo ASC")
+    List<Object[]> findPromediosPorGrupoFiltrado(
+            @Param("grupo") String grupo,
+            @Param("anio") String anio,
+            @Param("modalidad") String modalidad);
 
     @Query("SELECT COUNT(p) FROM Participante p WHERE p.nombreCompleto = ?1 AND p.grupo = ?2 AND p.anioEscolar = ?3 AND p.fechaAplicacion > ?4")
     long contarDuplicadosRecientes(String nombre, String grupo, String anio, LocalDateTime desde);
